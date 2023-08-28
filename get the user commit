@@ -1,0 +1,50 @@
+public List<DraftMap> fetchDraftMapsFromStash() { //TODO- This Method To be moved to service/Util class for code optimization and re-usability
+        List<DraftMap> draftMapsList = new ArrayList<>();
+        String repositoryPath = env.getProperty("repository.path");
+        try (Repository repository = Git.open(new File(repositoryPath)).getRepository()) {
+            Git git=new Git(repository);
+            String folderPath = env.getProperty("draft.directory") ;
+//            ObjectId headId = repository.resolve("HEAD");
+            RevWalk walk = new RevWalk(repository);
+            Map<String,RevCommit> latestCommitByFile=new HashMap<>();
+//          RevCommit commit = walk.parseCommit(headId);
+            Iterable<RevCommit> commits=git.log().all().call();
+            for(RevCommit commit:commits){
+                if(commit.getFullMessage().contains("shruthie")) {
+                    RevTree tree = commit.getTree();
+                    TreeWalk treeWalk = new TreeWalk(repository);
+                    treeWalk.addTree(tree);
+                    treeWalk.setRecursive(true);
+
+                    while (treeWalk.next()) {
+                        String path = treeWalk.getPathString();
+//                log.info("user name logged in"+serviceUtils.getUserName());
+                        if (path.startsWith(folderPath)) {
+//                        if(serviceUtils.getUserName().equals(commit.getAuthorIdent().getName())){
+//                        System.out.println("commit message"+commit.getFullMessage());
+//                        if(commit.getFullMessage().contains("shruthie")){
+                            String fileName = treeWalk.getNameString();
+//                            System.out.println("filename"+fileName);
+                            latestCommitByFile.put(fileName, commit);
+//                        }
+//                        }
+
+
+//                        }
+                        }
+                    }
+                }
+            }
+            Integer i =0;
+            for(Map.Entry<String,RevCommit> entry:latestCommitByFile.entrySet()){
+                String fileName= entry.getKey();
+                RevCommit commit=entry.getValue();
+                DraftMap map = new DraftMap(i++, commit.getAuthorIdent().getName(), fileName.substring(0, fileName.lastIndexOf('.')), df.format(commit.getAuthorIdent().getWhen()));
+                draftMapsList.add(map);
+            }
+
+        }catch (Exception e) {
+            log.error("Error Occurred file fetching the Draft Maps from Stash : "+e);
+        }
+        return draftMapsList;
+    }
